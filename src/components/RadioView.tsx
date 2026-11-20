@@ -211,15 +211,9 @@ export default function RadioView({
                   }`}
                 >
                   <Heart className="w-3.5 h-3.5" />
-                  <span>Saved Tracks ({likedTracks.length})</span>
+                  <span>Saved ({likedTracks.length})</span>
                 </button>
               </div>
-
-              {!isLoggedIn && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 font-mono">
-                  Guest Mode
-                </span>
-              )}
             </div>
 
             {/* TAB 1: RADIO HISTORY (Locked for Guests) */}
