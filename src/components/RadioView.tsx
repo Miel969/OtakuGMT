@@ -1,13 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Radio as RadioIcon, 
-  Volume2, 
-  VolumeX, 
-  Play, 
-  Pause, 
   MapPin, 
-  Music, 
-  Signal, 
   Headphones, 
   History, 
   Disc3,
@@ -18,8 +12,6 @@ import {
 } from 'lucide-react';
 import { 
   JAPAN_STATIONS, 
-  fetchCurrentTrack, 
-  fetchSongHistory, 
   type RadioStation, 
   type TrackItem 
 } from '../services/radioStations';
@@ -29,11 +21,9 @@ interface RadioViewProps {
   currentStation: RadioStation | null;
   isPlaying: boolean;
   onSelectStation: (station: RadioStation) => void;
-  onTogglePlay: () => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
   userProfile: UserProfile;
-  onLikeTrack: (track: { title: string; artist: string; stationName: string; city: string }) => void;
+  songHistory: TrackItem[];
+  loadingHistory: boolean;
   onRemoveLikedTrack: (id: string | number) => void;
   onOpenAuthForHistory: () => void;
 }
@@ -42,169 +32,33 @@ export default function RadioView({
   currentStation,
   isPlaying,
   onSelectStation,
-  onTogglePlay,
-  isMuted,
-  onToggleMute,
   userProfile,
-  onLikeTrack,
+  songHistory,
+  loadingHistory,
   onRemoveLikedTrack,
   onOpenAuthForHistory,
 }: RadioViewProps) {
   const activeStation = currentStation || JAPAN_STATIONS[0];
-  const [currentTrack, setCurrentTrack] = useState<TrackItem | null>(null);
-  const [songHistory, setSongHistory] = useState<TrackItem[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeTabSub, setActiveTabSub] = useState<'history' | 'saved'>('history');
 
-  // Poll current song and track history
-  useEffect(() => {
-    let isMounted = true;
-
-    const updateData = async () => {
-      if (activeStation.apiName) {
-        setLoadingHistory(true);
-        const [track, history] = await Promise.all([
-          fetchCurrentTrack(activeStation.apiName),
-          fetchSongHistory(activeStation.apiName),
-        ]);
-        if (isMounted) {
-          setCurrentTrack(track);
-          setSongHistory(history);
-          setLoadingHistory(false);
-        }
-      } else {
-        if (isMounted) {
-          setCurrentTrack(null);
-          setSongHistory([]);
-          setLoadingHistory(false);
-        }
-      }
-    };
-
-    updateData();
-    const interval = setInterval(updateData, 15000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [activeStation]);
-
-  const isCurrentTrackLiked = currentTrack && userProfile.likedTracks.some(
-    t => t.title === currentTrack.title && t.artist === currentTrack.artist
-  );
-
   return (
-    <div className="flex flex-col gap-8 w-full max-w-7xl mx-auto pb-12">
+    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-12 pt-1">
       
-      {/* Top Banner Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-950/40 via-[#0e1017] to-cyan-950/40 border border-white/10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
-        
-        <div className="relative z-10 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-semibold mb-3">
-            <RadioIcon className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-            <span>DIRECT LIVE BROADCASTS FROM JAPAN</span>
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-['Space_Grotesk'] mb-2">
-            Japan Anime Radio Radar
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            Select a neon beacon across the prefectures of Japan to stream live 24/7 anime theme songs, lofi chillout, and Tokyo underground tracks. Ultra-data saver friendly for Ghana (128kbps).
-          </p>
-        </div>
-
-        {/* Current Active Station Hero Card */}
-        <div className="relative z-10 bg-black/60 backdrop-blur-xl border border-white/10 p-5 rounded-2xl flex flex-col gap-3 min-w-[280px]">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-purple-400 font-semibold flex items-center gap-1.5">
-              <Signal className="w-3.5 h-3.5" />
-              {activeStation.city.toUpperCase()} · {activeStation.region}
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-semibold">
-              LIVE · {activeStation.bitrate}kbps
-            </span>
-          </div>
-
-          <div>
-            <h3 className="text-base font-bold text-white tracking-tight">
-              {activeStation.name}
-            </h3>
-            
-            {/* Live Track Display + Heart/Bookmark Button */}
-            {currentTrack ? (
-              <div className="mt-2 flex items-center justify-between gap-2 p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30">
-                <div className="flex items-start gap-2 overflow-hidden">
-                  <Music className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0 animate-bounce" />
-                  <div className="overflow-hidden">
-                    <p className="text-xs font-semibold text-purple-100 truncate">
-                      {currentTrack.title}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {currentTrack.artist}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Heart Button */}
-                <button
-                  onClick={() => onLikeTrack({
-                    title: currentTrack.title,
-                    artist: currentTrack.artist,
-                    stationName: activeStation.name,
-                    city: activeStation.city,
-                  })}
-                  className={`p-2 rounded-xl transition-all flex items-center justify-center flex-shrink-0 ${
-                    isCurrentTrackLiked 
-                      ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/40 scale-105' 
-                      : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-pink-400 border border-white/10'
-                  }`}
-                  title={isCurrentTrackLiked ? 'Saved to Liked Songs' : 'Like & Save Song'}
-                >
-                  <Heart className={`w-4 h-4 ${isCurrentTrackLiked ? 'fill-white' : ''}`} />
-                </button>
-              </div>
-            ) : (
-              <p className="text-xs text-purple-300 font-medium mt-0.5">
-                {activeStation.genre}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-            <button
-              onClick={onTogglePlay}
-              className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow-lg shadow-purple-600/30"
-            >
-              {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
-              <span>{isPlaying ? 'Pause' : 'Tune In Live'}</span>
-            </button>
-
-            <button
-              onClick={onToggleMute}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors"
-              title={isMuted ? 'Unmute' : 'Mute'}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main Grid: Accurate Geography Japan Map + Station List */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left/Center: Accurate Japan Map Vector Layer (7 Cols) */}
-        <div className="lg:col-span-7 p-6 sm:p-8 rounded-3xl bg-[#0e1017] border border-white/10 relative overflow-hidden flex flex-col items-center">
-          <div className="w-full flex items-center justify-between mb-4">
+        <div className="lg:col-span-7 p-5 sm:p-7 rounded-3xl bg-[#0e1017] border border-white/10 relative overflow-hidden flex flex-col items-center">
+          <div className="w-full flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-300 font-mono">
               <MapPin className="w-4 h-4 text-purple-400" />
               <span>GEOGRAPHIC JAPAN PREFECTURE RADAR</span>
             </div>
-            <span className="text-[11px] text-slate-500 font-mono">Real Topographic Projection</span>
+            <span className="text-[11px] text-slate-500 font-mono">Tap beacon to tune in</span>
           </div>
 
           {/* Map Vector Container with Absolute Station Beacons */}
-          <div className="relative w-full aspect-[1/1] max-w-lg flex items-center justify-center">
+          <div className="relative w-full aspect-[1/1] max-w-md sm:max-w-lg flex items-center justify-center">
             
             {/* Ambient Background Grid */}
             <div 
@@ -266,23 +120,23 @@ export default function RadioView({
           </div>
 
           {/* Map Footer Info */}
-          <div className="w-full flex items-center justify-between text-[11px] text-slate-500 pt-4 border-t border-white/5 mt-2 font-mono">
-            <span>OFFICIAL PREFECTURE DATA · WGS84 MERCATOR</span>
+          <div className="w-full flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-white/5 mt-2 font-mono">
+            <span>OFFICIAL PREFECTURE DATA · WGS84</span>
             <span>BEACONS: {JAPAN_STATIONS.length} ACTIVE</span>
           </div>
         </div>
 
         {/* Right: Station Selection Cards + Playlist History & Saved (5 Cols) */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
+        <div className="lg:col-span-5 flex flex-col gap-5">
           
           {/* Station Selector */}
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center justify-between px-1 mb-1">
-              <h2 className="text-base font-bold text-white font-['Space_Grotesk'] flex items-center gap-2">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between px-1 mb-0.5">
+              <h2 className="text-sm font-bold text-white font-['Space_Grotesk'] flex items-center gap-1.5">
                 <Headphones className="w-4 h-4 text-purple-400" />
-                <span>Available Radio Stations</span>
+                <span>Radio Stations</span>
               </h2>
-              <span className="text-xs text-slate-500 font-mono">HTTPS Verified</span>
+              <span className="text-[11px] text-slate-500 font-mono">128–192kbps</span>
             </div>
 
             {JAPAN_STATIONS.map((station) => {
@@ -292,49 +146,49 @@ export default function RadioView({
                 <button
                   key={station.id}
                   onClick={() => onSelectStation(station)}
-                  className={`text-left p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between group ${
+                  className={`text-left p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between group ${
                     isSelected 
                       ? 'bg-purple-950/30 border-purple-500/60 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30' 
                       : 'bg-[#0e1017] border-white/5 hover:border-white/15 hover:bg-white/[0.02]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs transition-colors flex-shrink-0 ${
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors flex-shrink-0 ${
                       isSelected 
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30' 
                         : 'bg-white/5 text-slate-400 group-hover:text-purple-300'
                     }`}>
                       {isSelected && isPlaying ? (
-                        <div className="flex items-end gap-0.5 h-3">
-                          <span className="w-0.5 h-3 bg-white animate-pulse" />
-                          <span className="w-0.5 h-2 bg-white animate-pulse delay-75" />
-                          <span className="w-0.5 h-3 bg-white animate-pulse delay-150" />
+                        <div className="flex items-end gap-0.5 h-2.5">
+                          <span className="w-0.5 h-2.5 bg-white animate-pulse" />
+                          <span className="w-0.5 h-1.5 bg-white animate-pulse delay-75" />
+                          <span className="w-0.5 h-2.5 bg-white animate-pulse delay-150" />
                         </div>
                       ) : (
-                        <RadioIcon className="w-4 h-4" />
+                        <RadioIcon className="w-3.5 h-3.5" />
                       )}
                     </div>
 
                     <div className="overflow-hidden">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-200 group-hover:text-white transition-colors truncate">
+                        <h4 className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors truncate">
                           {station.name}
                         </h4>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/5 border border-white/5 text-slate-400 font-mono flex-shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/5 border border-white/5 text-slate-400 font-mono flex-shrink-0">
                           {station.city}
                         </span>
                       </div>
-                      <p className="text-[11px] text-purple-400 font-medium truncate mt-0.5">
+                      <p className="text-[10px] text-purple-400 font-medium truncate mt-0.5">
                         {station.genre}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
-                    <span className="text-[10px] font-mono font-semibold text-emerald-400">
+                    <span className="text-[9px] font-mono font-semibold text-emerald-400">
                       {station.bitrate}k
                     </span>
-                    <span className="text-[10px] text-slate-500 uppercase">
+                    <span className="text-[9px] text-slate-500 uppercase">
                       {station.region}
                     </span>
                   </div>
@@ -385,21 +239,21 @@ export default function RadioView({
             {activeTabSub === 'history' && (
               <>
                 {!userProfile.isLoggedIn ? (
-                  <div className="py-6 px-4 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col items-center text-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                      <Lock className="w-5 h-5 text-purple-400" />
+                  <div className="py-5 px-4 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col items-center text-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                      <Lock className="w-4 h-4 text-purple-400" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-white">
                         Sign in to view Radio History
                       </h4>
-                      <p className="text-[11px] text-slate-400 max-w-xs mt-1">
+                      <p className="text-[10px] text-slate-400 max-w-xs mt-1">
                         Create a free OtakuGMT account to unlock live playlist logs, save tracks, and bookmark anime drops.
                       </p>
                     </div>
                     <button
                       onClick={onOpenAuthForHistory}
-                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md shadow-purple-600/30"
+                      className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md shadow-purple-600/30"
                     >
                       Sign In / Sign Up
                     </button>
@@ -410,7 +264,7 @@ export default function RadioView({
                     <span>Syncing playlist logs...</span>
                   </div>
                 ) : songHistory.length > 0 ? (
-                  <div className="flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
                     {songHistory.slice(0, 6).map((item, idx) => (
                       <div 
                         key={item.id || idx} 
@@ -422,7 +276,7 @@ export default function RadioView({
                           </span>
                           <Disc3 className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                           <div className="overflow-hidden">
-                            <p className="font-semibold text-slate-200 truncate">
+                            <p className="font-semibold text-slate-200 truncate text-[11px]">
                               {item.title}
                             </p>
                             <p className="text-[10px] text-slate-400 truncate">
@@ -432,7 +286,7 @@ export default function RadioView({
                         </div>
 
                         {item.album && (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-purple-300 font-mono truncate max-w-[120px] ml-2 flex-shrink-0 hidden sm:inline-block">
+                          <span className="text-[9px] px-2 py-0.5 rounded bg-white/5 text-purple-300 font-mono truncate max-w-[110px] ml-2 flex-shrink-0 hidden sm:inline-block">
                             {item.album}
                           </span>
                         )}
@@ -451,27 +305,27 @@ export default function RadioView({
             {activeTabSub === 'saved' && (
               <>
                 {!userProfile.isLoggedIn ? (
-                  <div className="py-6 px-4 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col items-center text-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                      <Heart className="w-5 h-5 text-purple-400" />
+                  <div className="py-5 px-4 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col items-center text-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                      <Heart className="w-4 h-4 text-purple-400" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-white">
                         Your Liked Songs Library
                       </h4>
-                      <p className="text-[11px] text-slate-400 max-w-xs mt-1">
+                      <p className="text-[10px] text-slate-400 max-w-xs mt-1">
                         Sign in to keep a permanent list of anime tracks you discover on OtakuGMT.
                       </p>
                     </div>
                     <button
                       onClick={onOpenAuthForHistory}
-                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md shadow-purple-600/30"
+                      className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md shadow-purple-600/30"
                     >
                       Sign In / Sign Up
                     </button>
                   </div>
                 ) : userProfile.likedTracks.length > 0 ? (
-                  <div className="flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
                     {userProfile.likedTracks.map((track) => (
                       <div
                         key={track.id}
@@ -480,7 +334,7 @@ export default function RadioView({
                         <div className="flex items-center gap-2 overflow-hidden">
                           <Heart className="w-3.5 h-3.5 text-pink-500 fill-pink-500 flex-shrink-0" />
                           <div className="overflow-hidden">
-                            <p className="font-semibold text-slate-200 truncate">
+                            <p className="font-semibold text-slate-200 truncate text-[11px]">
                               {track.title}
                             </p>
                             <p className="text-[10px] text-slate-400 truncate">

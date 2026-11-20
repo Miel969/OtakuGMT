@@ -10,7 +10,13 @@ import {
   LogOut
 } from 'lucide-react';
 import { fetchWeeklyAiringAnime, type AiringScheduleItem } from './services/anilist';
-import { JAPAN_STATIONS, type RadioStation } from './services/radioStations';
+import { 
+  JAPAN_STATIONS, 
+  fetchCurrentTrack, 
+  fetchSongHistory, 
+  type RadioStation, 
+  type TrackItem 
+} from './services/radioStations';
 import { getSavedProfile, saveProfile, type UserProfile } from './services/authService';
 import RadioView from './components/RadioView';
 import BottomNav, { type NavTab } from './components/BottomNav';
@@ -72,8 +78,11 @@ export default function App() {
     city: string;
   } | null>(null);
 
-  // Radio Audio Player State
+  // Radio Audio Player State & Live Track Tracking
   const [currentStation, setCurrentStation] = useState<RadioStation | null>(JAPAN_STATIONS[0]);
+  const [currentTrack, setCurrentTrack] = useState<TrackItem | null>(null);
+  const [songHistory, setSongHistory] = useState<TrackItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -97,6 +106,32 @@ export default function App() {
       }
     };
   }, []);
+
+  // Poll current track metadata for the active station globally
+  useEffect(() => {
+    let isMounted = true;
+    if (!currentStation) return;
+
+    const syncTrack = async () => {
+      setLoadingHistory(true);
+      const [track, history] = await Promise.all([
+        fetchCurrentTrack(currentStation),
+        fetchSongHistory(currentStation),
+      ]);
+      if (isMounted) {
+        setCurrentTrack(track);
+        setSongHistory(history);
+        setLoadingHistory(false);
+      }
+    };
+
+    syncTrack();
+    const interval = setInterval(syncTrack, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [currentStation]);
 
   // Update Audio source when station changes
   const handleSelectStation = (station: RadioStation) => {
@@ -131,21 +166,19 @@ export default function App() {
   // Like Track Handler
   const handleLikeTrack = (track: { title: string; artist: string; stationName: string; city: string }) => {
     if (!userProfile.isLoggedIn) {
-      // Prompt auth modal and remember this track to auto-save after login
       setPendingLikedTrack(track);
       setIsAuthOpen(true);
       return;
     }
 
-    // Already logged in: toggle save
     const exists = userProfile.likedTracks.some(
-      t => t.title === track.title && t.artist === track.artist
+      t => t.title === track.title
     );
 
     let updatedList = [];
     if (exists) {
       updatedList = userProfile.likedTracks.filter(
-        t => !(t.title === track.title && t.artist === track.artist)
+        t => t.title !== track.title
       );
     } else {
       updatedList = [
@@ -301,7 +334,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#08090C] text-slate-100 flex flex-col font-sans selection:bg-purple-600 selection:text-white pb-32">
+    <div className="min-h-screen bg-[#08090C] text-slate-100 flex flex-col font-sans selection:bg-purple-600 selection:text-white pb-36">
       
       {/* Background Ambience / Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -424,20 +457,18 @@ export default function App() {
 
       </header>
 
-      {/* Main Single-Page Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 flex-1 w-full flex flex-col gap-8 relative z-10">
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-4 flex-1 w-full flex flex-col gap-6 relative z-10">
         
-        {/* VIEW 1: RADIO RADAR VIEW */}
+        {/* VIEW 1: RADIO RADAR VIEW (Shifted Up Cleanly) */}
         {activeTab === 'radio' && (
           <RadioView 
             currentStation={currentStation}
             isPlaying={isPlaying}
             onSelectStation={handleSelectStation}
-            onTogglePlay={handleTogglePlay}
-            isMuted={isMuted}
-            onToggleMute={handleToggleMute}
             userProfile={userProfile}
-            onLikeTrack={handleLikeTrack}
+            songHistory={songHistory}
+            loadingHistory={loadingHistory}
             onRemoveLikedTrack={handleRemoveLikedTrack}
             onOpenAuthForHistory={() => setIsAuthOpen(true)}
           />
@@ -684,15 +715,18 @@ export default function App() {
 
       </main>
 
-      {/* Floating Bottom Navigation Bar */}
+      {/* Floating Bottom Navigation Bar (With Persistent Player & Heart) */}
       <BottomNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         currentStation={currentStation}
+        currentTrack={currentTrack}
         isPlaying={isPlaying}
         onTogglePlay={handleTogglePlay}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+        userProfile={userProfile}
+        onLikeTrack={handleLikeTrack}
       />
 
       {/* Sign In / Sign Up Modal */}
