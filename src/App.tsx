@@ -5,12 +5,16 @@ import {
   Calendar, 
   ExternalLink,
   Search,
-  X
+  X,
+  User,
+  LogOut
 } from 'lucide-react';
 import { fetchWeeklyAiringAnime, type AiringScheduleItem } from './services/anilist';
 import { JAPAN_STATIONS, type RadioStation } from './services/radioStations';
+import { getSavedProfile, saveProfile, type UserProfile } from './services/authService';
 import RadioView from './components/RadioView';
 import BottomNav, { type NavTab } from './components/BottomNav';
+import AuthModal from './components/AuthModal';
 
 // Helper component for live ticking mini countdown on cards
 function CardCountdown({ airingAt }: { airingAt: number }) {
@@ -58,6 +62,16 @@ export default function App() {
   const [reminded, setReminded] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
+  // User Profile & Auth
+  const [userProfile, setUserProfile] = useState<UserProfile>(getSavedProfile());
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [pendingLikedTrack, setPendingLikedTrack] = useState<{
+    title: string;
+    artist: string;
+    stationName: string;
+    city: string;
+  } | null>(null);
+
   // Radio Audio Player State
   const [currentStation, setCurrentStation] = useState<RadioStation | null>(JAPAN_STATIONS[0]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -89,7 +103,6 @@ export default function App() {
     setCurrentStation(station);
     if (audioRef.current) {
       audioRef.current.pause();
-      // Append cache buster to guarantee live edge connection
       audioRef.current.src = `${station.streamUrl}?live=${Date.now()}`;
       audioRef.current.load();
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
@@ -99,12 +112,10 @@ export default function App() {
   const handleTogglePlay = () => {
     if (!audioRef.current || !currentStation) return;
     if (isPlaying) {
-      // Complete pause/stop: clear src so it doesn't buffer stale audio in background
       audioRef.current.pause();
       audioRef.current.src = '';
       setIsPlaying(false);
     } else {
-      // Always reconnect fresh to live real-time stream
       audioRef.current.src = `${currentStation.streamUrl}?live=${Date.now()}`;
       audioRef.current.load();
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
@@ -115,6 +126,96 @@ export default function App() {
     if (!audioRef.current) return;
     audioRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
+  };
+
+  // Like Track Handler
+  const handleLikeTrack = (track: { title: string; artist: string; stationName: string; city: string }) => {
+    if (!userProfile.isLoggedIn) {
+      // Prompt auth modal and remember this track to auto-save after login
+      setPendingLikedTrack(track);
+      setIsAuthOpen(true);
+      return;
+    }
+
+    // Already logged in: toggle save
+    const exists = userProfile.likedTracks.some(
+      t => t.title === track.title && t.artist === track.artist
+    );
+
+    let updatedList = [];
+    if (exists) {
+      updatedList = userProfile.likedTracks.filter(
+        t => !(t.title === track.title && t.artist === track.artist)
+      );
+    } else {
+      updatedList = [
+        {
+          id: Date.now(),
+          title: track.title,
+          artist: track.artist,
+          stationName: track.stationName,
+          city: track.city,
+          savedAt: new Date().toISOString(),
+        },
+        ...userProfile.likedTracks,
+      ];
+    }
+
+    const updatedProfile = { ...userProfile, likedTracks: updatedList };
+    setUserProfile(updatedProfile);
+    saveProfile(updatedProfile);
+  };
+
+  // Remove single liked track
+  const handleRemoveLikedTrack = (id: string | number) => {
+    const updated = {
+      ...userProfile,
+      likedTracks: userProfile.likedTracks.filter(t => t.id !== id),
+    };
+    setUserProfile(updated);
+    saveProfile(updated);
+  };
+
+  // Complete Auth success (auto-saves pending track if any)
+  const handleAuthSuccess = (username: string) => {
+    let initialTracks = userProfile.likedTracks;
+    if (pendingLikedTrack) {
+      initialTracks = [
+        {
+          id: Date.now(),
+          title: pendingLikedTrack.title,
+          artist: pendingLikedTrack.artist,
+          stationName: pendingLikedTrack.stationName,
+          city: pendingLikedTrack.city,
+          savedAt: new Date().toISOString(),
+        },
+        ...initialTracks,
+      ];
+    }
+
+    const newProfile: UserProfile = {
+      id: `usr_${Date.now()}`,
+      username,
+      avatarSeed: username,
+      isLoggedIn: true,
+      likedTracks: initialTracks,
+    };
+
+    setUserProfile(newProfile);
+    saveProfile(newProfile);
+    setPendingLikedTrack(null);
+  };
+
+  const handleLogout = () => {
+    const guest: UserProfile = {
+      id: 'guest',
+      username: 'Guest Otaku',
+      avatarSeed: 'Spike',
+      isLoggedIn: false,
+      likedTracks: [],
+    };
+    setUserProfile(guest);
+    saveProfile(guest);
   };
 
   // Focus input when search bar opens
@@ -209,7 +310,7 @@ export default function App() {
       </div>
 
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#08090C]/90 border-b border-white/5 px-4 sm:px-8 py-3.5 transition-all">
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#08090C]/90 border-b border-white/5 px-4 sm:px-8 py-3.5 transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
           {/* Logo & Local Region Badge */}
@@ -236,8 +337,8 @@ export default function App() {
             <span className="font-mono font-bold text-emerald-400">{gmtTime || '00:00:00'}</span>
           </div>
 
-          {/* Right Action: Search Toggle Button (Visible on schedule view) */}
-          <div className="flex items-center gap-2">
+          {/* Right Action: Search + User Profile Action */}
+          <div className="flex items-center gap-2.5">
             {activeTab === 'schedule' && (
               <button
                 onClick={() => {
@@ -256,6 +357,30 @@ export default function App() {
                 title={isSearchOpen ? 'Close search' : 'Search anime'}
               >
                 {isSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+              </button>
+            )}
+
+            {/* Profile Avatar / Login Button */}
+            {userProfile.isLoggedIn ? (
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 pl-2.5 pr-1.5 py-1 rounded-xl">
+                <span className="text-xs font-semibold text-purple-300 max-w-[90px] truncate">
+                  {userProfile.username}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAuthOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md shadow-purple-600/25"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Sign In</span>
               </button>
             )}
           </div>
@@ -311,6 +436,10 @@ export default function App() {
             onTogglePlay={handleTogglePlay}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
+            userProfile={userProfile}
+            onLikeTrack={handleLikeTrack}
+            onRemoveLikedTrack={handleRemoveLikedTrack}
+            onOpenAuthForHistory={() => setIsAuthOpen(true)}
           />
         )}
 
@@ -564,6 +693,14 @@ export default function App() {
         onTogglePlay={handleTogglePlay}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+      />
+
+      {/* Sign In / Sign Up Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        pendingTrackTitle={pendingLikedTrack?.title}
+        onSuccess={handleAuthSuccess}
       />
 
     </div>
