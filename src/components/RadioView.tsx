@@ -6,11 +6,11 @@ import {
   Play, 
   Pause, 
   MapPin, 
-  Music,
-  Signal,
-  Headphones,
-  History,
-  Disc3
+  Music, 
+  Signal, 
+  Headphones, 
+  History, 
+  Disc3 
 } from 'lucide-react';
 import { 
   JAPAN_STATIONS, 
@@ -91,7 +91,7 @@ export default function RadioView({
             Japan Anime Radio Radar
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            Select a neon beacon across the islands of Japan to stream live 24/7 anime theme songs, lofi chillout, and Tokyo underground tracks. Ultra-data saver friendly for Ghana (128kbps).
+            Select a neon beacon across the prefectures of Japan to stream live 24/7 anime theme songs, lofi chillout, and Tokyo underground tracks. Ultra-data saver friendly for Ghana (128kbps).
           </p>
         </div>
 
@@ -152,66 +152,39 @@ export default function RadioView({
         </div>
       </div>
 
-      {/* Main Grid: Interactive Cyber Japan Map + Station List */}
+      {/* Main Grid: Accurate Geography Japan Map + Station List */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left/Center: Interactive SVG Japan Map (7 Cols) */}
+        {/* Left/Center: Accurate Japan Map Vector Layer (7 Cols) */}
         <div className="lg:col-span-7 p-6 sm:p-8 rounded-3xl bg-[#0e1017] border border-white/10 relative overflow-hidden flex flex-col items-center">
           <div className="w-full flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-300 font-mono">
               <MapPin className="w-4 h-4 text-purple-400" />
-              <span>JAPAN REGIONAL RADAR</span>
+              <span>GEOGRAPHIC JAPAN PREFECTURE RADAR</span>
             </div>
-            <span className="text-[11px] text-slate-500">Tap any beacon to tune in</span>
+            <span className="text-[11px] text-slate-500 font-mono">Real Topographic Projection</span>
           </div>
 
-          {/* SVG Map Container */}
-          <div className="relative w-full aspect-[4/3] max-w-lg flex items-center justify-center">
+          {/* Map Vector Container with Absolute Station Beacons */}
+          <div className="relative w-full aspect-[1/1] max-w-lg flex items-center justify-center">
             
             {/* Ambient Background Grid */}
             <div 
-              className="absolute inset-0 opacity-10" 
+              className="absolute inset-0 opacity-10 pointer-events-none" 
               style={{
                 backgroundImage: 'radial-gradient(circle at 1px 1px, #8b5cf6 1px, transparent 0)',
                 backgroundSize: '24px 24px'
               }} 
             />
 
-            {/* Stylized Cyber Japan Islands SVG */}
-            <svg 
-              viewBox="0 0 500 500" 
-              className="w-full h-full filter drop-shadow-[0_0_20px_rgba(139,92,246,0.15)]"
-            >
-              {/* Hokkaido Island */}
-              <path
-                d="M360,50 C380,45 420,60 435,90 C450,115 425,145 390,140 C365,135 345,150 330,120 C320,100 340,60 360,50 Z"
-                className="fill-[#131622] stroke-purple-500/40 hover:stroke-purple-400 stroke-2 transition-all cursor-pointer"
-              />
-              
-              {/* Honshu (Main Island Arc) */}
-              <path
-                d="M340,165 C370,195 380,240 375,280 C365,310 330,330 300,340 C260,355 210,380 180,370 C160,360 180,340 215,335 C250,330 270,300 290,270 C310,240 325,190 340,165 Z"
-                className="fill-[#131622] stroke-purple-500/40 hover:stroke-purple-400 stroke-2 transition-all cursor-pointer"
-              />
+            {/* Actual Geolonia Official Japan Geographic Outline */}
+            <img 
+              src="/japan-map.svg" 
+              alt="Geographic Map of Japan"
+              className="w-full h-full object-contain filter invert opacity-35 brightness-150 contrast-125 drop-shadow-[0_0_20px_rgba(139,92,246,0.3)] pointer-events-none select-none"
+            />
 
-              {/* Shikoku Island */}
-              <path
-                d="M210,385 C235,375 255,385 245,405 C230,415 205,410 200,395 Z"
-                className="fill-[#131622] stroke-purple-500/40 hover:stroke-purple-400 stroke-2 transition-all cursor-pointer"
-              />
-
-              {/* Kyushu Island */}
-              <path
-                d="M140,385 C170,390 180,420 165,450 C145,465 125,445 120,415 C118,395 130,385 140,385 Z"
-                className="fill-[#131622] stroke-purple-500/40 hover:stroke-purple-400 stroke-2 transition-all cursor-pointer"
-              />
-
-              {/* Okinawa (Inset indicator) */}
-              <circle cx="80" cy="460" r="6" className="fill-[#131622] stroke-purple-500/40 stroke-2" />
-              <text x="70" y="480" className="text-[10px] fill-slate-500 font-mono">Okinawa</text>
-            </svg>
-
-            {/* Interactive City Beacons Pin Layer */}
+            {/* Interactive Prefecture Beacons Pins */}
             {JAPAN_STATIONS.map((station) => {
               const isSelected = activeStation.id === station.id;
 
@@ -223,29 +196,30 @@ export default function RadioView({
                     left: `${station.coordinates.x}%`,
                     top: `${station.coordinates.y}%`,
                   }}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 group focus:outline-none z-20"
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 group focus:outline-none z-30 cursor-pointer"
                 >
-                  {/* Pulsing Target Ring */}
+                  {/* Outer Pulsing Target Ring */}
                   {isSelected && (
-                    <span className="absolute -inset-2.5 rounded-full bg-purple-500/30 animate-ping pointer-events-none" />
+                    <span className="absolute -inset-3 rounded-full bg-purple-500/40 animate-ping pointer-events-none" />
                   )}
 
                   {/* Beacon Pin */}
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl ${
                     isSelected 
-                      ? 'bg-purple-400 ring-4 ring-purple-500/50 scale-125 shadow-purple-500/50' 
-                      : 'bg-slate-700 hover:bg-purple-500 hover:scale-110'
+                      ? 'bg-purple-400 ring-4 ring-purple-500/60 scale-125 shadow-purple-500/60' 
+                      : 'bg-slate-700 hover:bg-purple-500 hover:scale-125'
                   }`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-black' : 'bg-white'}`} />
                   </div>
 
-                  {/* City Label Tooltip */}
-                  <div className={`absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-none transition-all duration-200 whitespace-nowrap px-2 py-0.5 rounded-md text-[10px] font-bold font-mono ${
+                  {/* Prefecture & City Badge Tooltip */}
+                  <div className={`absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-none transition-all duration-200 whitespace-nowrap px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono shadow-2xl flex items-center gap-1 ${
                     isSelected 
-                      ? 'bg-purple-600 text-white opacity-100 shadow-md' 
-                      : 'bg-black/80 text-slate-300 border border-white/10 opacity-70 group-hover:opacity-100'
+                      ? 'bg-purple-600 text-white opacity-100 scale-105 border border-purple-400/50' 
+                      : 'bg-black/90 text-slate-300 border border-white/10 opacity-70 group-hover:opacity-100 group-hover:scale-100'
                   }`}>
-                    {station.city}
+                    <span>{station.city}</span>
+                    <span className="text-[9px] text-purple-200 opacity-70">({station.region})</span>
                   </div>
                 </button>
               );
@@ -255,7 +229,7 @@ export default function RadioView({
 
           {/* Map Footer Info */}
           <div className="w-full flex items-center justify-between text-[11px] text-slate-500 pt-4 border-t border-white/5 mt-2 font-mono">
-            <span>COORDINATES: TOKYO · 35.6764° N, 139.6500° E</span>
+            <span>OFFICIAL PREFECTURE DATA · WGS84 MERCATOR</span>
             <span>BEACONS: {JAPAN_STATIONS.length} ACTIVE</span>
           </div>
         </div>
