@@ -21,7 +21,7 @@ interface RadioViewProps {
   currentStation: RadioStation | null;
   isPlaying: boolean;
   onSelectStation: (station: RadioStation) => void;
-  userProfile: UserProfile;
+  userProfile?: UserProfile;
   songHistory: TrackItem[];
   loadingHistory: boolean;
   onRemoveLikedTrack: (id: string | number) => void;
@@ -40,24 +40,26 @@ export default function RadioView({
 }: RadioViewProps) {
   const activeStation = currentStation || JAPAN_STATIONS[0];
   const [activeTabSub, setActiveTabSub] = useState<'history' | 'saved'>('history');
+  const isLoggedIn = !!userProfile?.isLoggedIn;
+  const likedTracks = userProfile?.likedTracks || [];
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-12 pt-1">
+    <div className="flex flex-col gap-5 w-full max-w-7xl mx-auto pb-12 pt-0">
       
       {/* Main Grid: Accurate Geography Japan Map + Station List */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* Left/Center: Accurate Japan Map Vector Layer (7 Cols) */}
-        <div className="lg:col-span-7 p-5 sm:p-7 rounded-3xl bg-[#0e1017] border border-white/10 relative overflow-hidden flex flex-col items-center">
-          <div className="w-full flex items-center justify-between mb-3">
+        <div className="lg:col-span-7 p-4 sm:p-6 rounded-3xl bg-[#0e1017] border border-white/10 relative overflow-hidden flex flex-col items-center">
+          <div className="w-full flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-300 font-mono">
               <MapPin className="w-4 h-4 text-purple-400" />
               <span>GEOGRAPHIC JAPAN PREFECTURE RADAR</span>
             </div>
-            <span className="text-[11px] text-slate-500 font-mono">Tap beacon to tune in</span>
+            <span className="text-[10px] text-slate-500 font-mono">Tap beacon to tune in</span>
           </div>
 
-          {/* Map Vector Container with Absolute Station Beacons */}
+          {/* Map Vector Container with Clean Minimal Pins (No text labels cluttering the map) */}
           <div className="relative w-full aspect-[1/1] max-w-md sm:max-w-lg flex items-center justify-center">
             
             {/* Ambient Background Grid */}
@@ -76,7 +78,7 @@ export default function RadioView({
               className="w-full h-full object-contain filter invert opacity-35 brightness-150 contrast-125 drop-shadow-[0_0_20px_rgba(139,92,246,0.3)] pointer-events-none select-none"
             />
 
-            {/* Interactive Prefecture Beacons Pins */}
+            {/* Clean Minimal Station Beacons (Zero text labels on dots) */}
             {JAPAN_STATIONS.map((station) => {
               const isSelected = activeStation.id === station.id;
 
@@ -88,46 +90,31 @@ export default function RadioView({
                     left: `${station.coordinates.x}%`,
                     top: `${station.coordinates.y}%`,
                   }}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 group focus:outline-none z-30 cursor-pointer"
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 group focus:outline-none z-30 cursor-pointer p-1.5"
+                  title={`${station.city} · ${station.name}`}
                 >
                   {/* Outer Pulsing Target Ring */}
                   {isSelected && (
-                    <span className="absolute -inset-3 rounded-full bg-purple-500/40 animate-ping pointer-events-none" />
+                    <span className="absolute -inset-1 rounded-full bg-purple-500/40 animate-ping pointer-events-none" />
                   )}
 
-                  {/* Beacon Pin */}
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl ${
+                  {/* Clean Beacon Dot */}
+                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl ${
                     isSelected 
                       ? 'bg-purple-400 ring-4 ring-purple-500/60 scale-125 shadow-purple-500/60' 
-                      : 'bg-slate-700 hover:bg-purple-500 hover:scale-125'
+                      : 'bg-slate-600 hover:bg-purple-500 hover:scale-125'
                   }`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-black' : 'bg-white'}`} />
-                  </div>
-
-                  {/* Prefecture & City Badge Tooltip */}
-                  <div className={`absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-none transition-all duration-200 whitespace-nowrap px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono shadow-2xl flex items-center gap-1 ${
-                    isSelected 
-                      ? 'bg-purple-600 text-white opacity-100 scale-105 border border-purple-400/50' 
-                      : 'bg-black/90 text-slate-300 border border-white/10 opacity-70 group-hover:opacity-100 group-hover:scale-100'
-                  }`}>
-                    <span>{station.city}</span>
-                    <span className="text-[9px] text-purple-200 opacity-70">({station.region})</span>
+                    <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-black' : 'bg-white'}`} />
                   </div>
                 </button>
               );
             })}
 
           </div>
-
-          {/* Map Footer Info */}
-          <div className="w-full flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-white/5 mt-2 font-mono">
-            <span>OFFICIAL PREFECTURE DATA · WGS84</span>
-            <span>BEACONS: {JAPAN_STATIONS.length} ACTIVE</span>
-          </div>
         </div>
 
         {/* Right: Station Selection Cards + Playlist History & Saved (5 Cols) */}
-        <div className="lg:col-span-5 flex flex-col gap-5">
+        <div className="lg:col-span-5 flex flex-col gap-4">
           
           {/* Station Selector */}
           <div className="flex flex-col gap-2">
@@ -136,7 +123,7 @@ export default function RadioView({
                 <Headphones className="w-4 h-4 text-purple-400" />
                 <span>Radio Stations</span>
               </h2>
-              <span className="text-[11px] text-slate-500 font-mono">128–192kbps</span>
+              <span className="text-[11px] text-slate-500 font-mono">128–256kbps</span>
             </div>
 
             {JAPAN_STATIONS.map((station) => {
@@ -146,7 +133,7 @@ export default function RadioView({
                 <button
                   key={station.id}
                   onClick={() => onSelectStation(station)}
-                  className={`text-left p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between group ${
+                  className={`text-left p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between group ${
                     isSelected 
                       ? 'bg-purple-950/30 border-purple-500/60 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30' 
                       : 'bg-[#0e1017] border-white/5 hover:border-white/15 hover:bg-white/[0.02]'
@@ -224,11 +211,11 @@ export default function RadioView({
                   }`}
                 >
                   <Heart className="w-3.5 h-3.5" />
-                  <span>Saved Tracks ({userProfile.likedTracks.length})</span>
+                  <span>Saved Tracks ({likedTracks.length})</span>
                 </button>
               </div>
 
-              {!userProfile.isLoggedIn && (
+              {!isLoggedIn && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 font-mono">
                   Guest Mode
                 </span>
@@ -238,7 +225,7 @@ export default function RadioView({
             {/* TAB 1: RADIO HISTORY (Locked for Guests) */}
             {activeTabSub === 'history' && (
               <>
-                {!userProfile.isLoggedIn ? (
+                {!isLoggedIn ? (
                   <div className="py-5 px-4 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col items-center text-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
                       <Lock className="w-4 h-4 text-purple-400" />
@@ -304,7 +291,7 @@ export default function RadioView({
             {/* TAB 2: SAVED TRACKS */}
             {activeTabSub === 'saved' && (
               <>
-                {!userProfile.isLoggedIn ? (
+                {!isLoggedIn ? (
                   <div className="py-5 px-4 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col items-center text-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
                       <Heart className="w-4 h-4 text-purple-400" />
@@ -324,9 +311,9 @@ export default function RadioView({
                       Sign In / Sign Up
                     </button>
                   </div>
-                ) : userProfile.likedTracks.length > 0 ? (
+                ) : likedTracks.length > 0 ? (
                   <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
-                    {userProfile.likedTracks.map((track) => (
+                    {likedTracks.map((track) => (
                       <div
                         key={track.id}
                         className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:border-purple-500/20 text-xs"

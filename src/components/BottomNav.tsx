@@ -14,7 +14,7 @@ interface BottomNavProps {
   onTogglePlay: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
-  userProfile: UserProfile;
+  userProfile?: UserProfile;
   onLikeTrack: (track: { title: string; artist: string; stationName: string; city: string }) => void;
 }
 
@@ -33,7 +33,8 @@ export default function BottomNav({
   const displayTitle = currentTrack?.title || (currentStation ? `${currentStation.name} Broadcast` : '');
   const displayArtist = currentTrack?.artist || (currentStation ? `${currentStation.city} · ${currentStation.genre}` : '');
 
-  const isLiked = currentStation && userProfile.likedTracks.some(
+  const likedTracks = userProfile?.likedTracks || [];
+  const isLiked = currentStation && likedTracks.some(
     t => t.title === displayTitle
   );
 
