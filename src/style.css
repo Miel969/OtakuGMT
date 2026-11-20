@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-[#08090C] text-slate-100 font-sans antialiased selection:bg-violet-500 selection:text-white;
+    min-height: 100vh;
+  }
+}
