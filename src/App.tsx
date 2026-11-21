@@ -21,6 +21,7 @@ import { getSavedProfile, saveProfile, type UserProfile } from './services/authS
 import RadioView from './components/RadioView';
 import BottomNav, { type NavTab } from './components/BottomNav';
 import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
 
 // Helper component for live ticking mini countdown on cards
 function CardCountdown({ airingAt }: { airingAt: number }) {
@@ -71,6 +72,7 @@ export default function App() {
   // User Profile & Auth
   const [userProfile, setUserProfile] = useState<UserProfile>(getSavedProfile());
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [pendingLikedTrack, setPendingLikedTrack] = useState<{
     title: string;
     artist: string;
@@ -84,28 +86,228 @@ export default function App() {
   const [songHistory, setSongHistory] = useState<TrackItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const shouldPlayRef = useRef<boolean>(false);
+  const currentStationRef = useRef<RadioStation | null>(JAPAN_STATIONS[0]);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stallTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTimeRef = useRef<number>(0);
+  const frozenCountRef = useRef<number>(0);
 
-  // Initialize Audio
+  // Keep station ref in sync
   useEffect(() => {
-    audioRef.current = new Audio();
-    audioRef.current.preload = 'none';
+    currentStationRef.current = currentStation;
+  }, [currentStation]);
 
-    audioRef.current.onplay = () => setIsPlaying(true);
-    audioRef.current.onpause = () => setIsPlaying(false);
-    audioRef.current.onerror = () => {
-      console.warn('Audio stream error or network interrupted');
-      setIsPlaying(false);
+  // Robust live stream playback connector
+  const connectAndPlay = (station: RadioStation) => {
+    if (!station) return;
+    shouldPlayRef.current = true;
+    setIsBuffering(true);
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (stallTimeoutRef.current) {
+      clearTimeout(stallTimeoutRef.current);
+      stallTimeoutRef.current = null;
+    }
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.preload = 'none';
+    }
+
+    const audio = audioRef.current;
+    audio.pause();
+    // Unique live query parameter busts proxy/browser socket caches for a fresh live pipe
+    audio.src = `${station.streamUrl}?live=${Date.now()}`;
+    audio.load();
+    audio
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+        setIsBuffering(false);
+        frozenCountRef.current = 0;
+        lastTimeRef.current = 0;
+      })
+      .catch((err) => {
+        console.warn('[OtakuGMT Audio] Playback deferred or interrupted:', err);
+        if (shouldPlayRef.current) {
+          scheduleReconnect('Initial connection failed');
+        }
+      });
+  };
+
+  // Scheduled reconnection with debouncing
+  const scheduleReconnect = (reason: string) => {
+    if (!shouldPlayRef.current || !currentStationRef.current) return;
+    console.warn(`[OtakuGMT Watchdog] Triggering auto-reconnect: ${reason}`);
+    setIsBuffering(true);
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (shouldPlayRef.current && currentStationRef.current) {
+        connectAndPlay(currentStationRef.current);
+      }
+    }, 1200);
+  };
+
+  // Initialize Audio & Attach Watchdog Event Listeners
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = 'none';
+    audioRef.current = audio;
+
+    const onPlay = () => {
+      setIsPlaying(true);
+      setIsBuffering(false);
+      frozenCountRef.current = 0;
     };
 
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
+    const onPlaying = () => {
+      setIsPlaying(true);
+      setIsBuffering(false);
+      frozenCountRef.current = 0;
+    };
+
+    const onPause = () => {
+      if (!shouldPlayRef.current) {
+        setIsPlaying(false);
+        setIsBuffering(false);
       }
     };
+
+    const onWaiting = () => {
+      if (shouldPlayRef.current) {
+        setIsBuffering(true);
+      }
+    };
+
+    const onStalled = () => {
+      if (shouldPlayRef.current) {
+        setIsBuffering(true);
+        if (!stallTimeoutRef.current) {
+          stallTimeoutRef.current = setTimeout(() => {
+            stallTimeoutRef.current = null;
+            if (shouldPlayRef.current) {
+              scheduleReconnect('Stream stalled');
+            }
+          }, 3500);
+        }
+      }
+    };
+
+    const onError = () => {
+      if (shouldPlayRef.current) {
+        scheduleReconnect('Socket/Network error');
+      } else {
+        setIsPlaying(false);
+        setIsBuffering(false);
+      }
+    };
+
+    const onEnded = () => {
+      if (shouldPlayRef.current) {
+        scheduleReconnect('Server closed live stream');
+      } else {
+        setIsPlaying(false);
+      }
+    };
+
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('stalled', onStalled);
+    audio.addEventListener('error', onError);
+    audio.addEventListener('ended', onEnded);
+
+    // Stream Freeze / Silence Watchdog Interval (every 3.5s)
+    const watchdogInterval = setInterval(() => {
+      if (!shouldPlayRef.current || !audioRef.current) return;
+      const curTime = audioRef.current.currentTime;
+      const isPaused = audioRef.current.paused;
+
+      if (isPaused) {
+        scheduleReconnect('Audio unexpectedly paused');
+      } else if (curTime > 0 && Math.abs(curTime - lastTimeRef.current) < 0.05) {
+        frozenCountRef.current++;
+        if (frozenCountRef.current >= 2) {
+          frozenCountRef.current = 0;
+          scheduleReconnect('Stream buffer frozen');
+        }
+      } else {
+        frozenCountRef.current = 0;
+        lastTimeRef.current = curTime;
+      }
+    }, 3500);
+
+    return () => {
+      clearInterval(watchdogInterval);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
+      audio.pause();
+      audio.src = '';
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('stalled', onStalled);
+      audio.removeEventListener('error', onError);
+      audio.removeEventListener('ended', onEnded);
+    };
   }, []);
+
+  // MediaSession API Integration for uninterrupted background playback
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentStation) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack?.title || currentStation.name,
+        artist: currentTrack?.artist !== currentStation.name ? currentTrack?.artist : currentStation.genre,
+        album: `OtakuGMT • ${currentStation.city}`,
+        artwork: [
+          { src: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=512&q=80', sizes: '512x512', type: 'image/jpeg' },
+        ],
+      });
+
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (!isPlaying && currentStationRef.current) {
+          connectAndPlay(currentStationRef.current);
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        shouldPlayRef.current = false;
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        setIsPlaying(false);
+      });
+
+      navigator.mediaSession.setActionHandler('stop', () => {
+        shouldPlayRef.current = false;
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+        }
+        setIsPlaying(false);
+      });
+    } catch (err) {
+      console.warn('MediaSession notice:', err);
+    }
+  }, [currentStation, currentTrack, isPlaying]);
 
   // Poll current track metadata for the active station globally
   useEffect(() => {
@@ -136,24 +338,23 @@ export default function App() {
   // Update Audio source when station changes
   const handleSelectStation = (station: RadioStation) => {
     setCurrentStation(station);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = `${station.streamUrl}?live=${Date.now()}`;
-      audioRef.current.load();
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-    }
+    connectAndPlay(station);
   };
 
   const handleTogglePlay = () => {
-    if (!audioRef.current || !currentStation) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
+    if (!currentStation) return;
+    if (isPlaying || shouldPlayRef.current) {
+      shouldPlayRef.current = false;
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
       setIsPlaying(false);
+      setIsBuffering(false);
     } else {
-      audioRef.current.src = `${currentStation.streamUrl}?live=${Date.now()}`;
-      audioRef.current.load();
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      connectAndPlay(currentStation);
     }
   };
 
@@ -395,18 +596,18 @@ export default function App() {
 
             {/* Profile Avatar / Login Button */}
             {userProfile.isLoggedIn ? (
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 pl-2.5 pr-1.5 py-1 rounded-xl">
+              <button
+                onClick={() => setIsProfileOpen(true)}
+                className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2.5 pr-2.5 py-1.5 rounded-xl transition-colors"
+                title="Open Profile"
+              >
+                <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">
+                  {userProfile.username[0]?.toUpperCase() || 'U'}
+                </div>
                 <span className="text-xs font-semibold text-purple-300 max-w-[90px] truncate">
                   {userProfile.username}
                 </span>
-                <button
-                  onClick={handleLogout}
-                  className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
-                  title="Sign out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              </button>
             ) : (
               <button
                 onClick={() => setIsAuthOpen(true)}
@@ -466,11 +667,6 @@ export default function App() {
             currentStation={currentStation}
             isPlaying={isPlaying}
             onSelectStation={handleSelectStation}
-            userProfile={userProfile}
-            songHistory={songHistory}
-            loadingHistory={loadingHistory}
-            onRemoveLikedTrack={handleRemoveLikedTrack}
-            onOpenAuthForHistory={() => setIsAuthOpen(true)}
           />
         )}
 
@@ -508,11 +704,11 @@ export default function App() {
                         NEXT AIRING EPISODE
                       </span>
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/20 border border-cyan-500/30 text-cyan-300">
-                        Episode {selectedItem.episode}
+                        Ep {selectedItem.episode}
                       </span>
                       {selectedItem.media.averageScore && (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">
-                          ★ {selectedItem.media.averageScore}% Score
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-emerald-300">
+                          ★ {selectedItem.media.averageScore}%
                         </span>
                       )}
                     </div>
@@ -557,7 +753,7 @@ export default function App() {
                         }`}
                       >
                         <Bell className="w-4 h-4" />
-                        {reminded ? 'Reminder Set for GMT Drop!' : 'Notify Me at Drop'}
+                        {reminded ? 'Reminder Set' : 'Notify Me'}
                       </button>
 
                       <a 
@@ -715,18 +911,26 @@ export default function App() {
 
       </main>
 
-      {/* Floating Bottom Navigation Bar (With Persistent Player & Heart) */}
+      {/* Floating Bottom Navigation Bar (Spotify Ultra-Transparent Style) */}
       <BottomNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         currentStation={currentStation}
         currentTrack={currentTrack}
         isPlaying={isPlaying}
+        isBuffering={isBuffering}
         onTogglePlay={handleTogglePlay}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+      />
+
+      {/* Profile & History Drawer (Option A) */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
         userProfile={userProfile}
-        onLikeTrack={handleLikeTrack}
+        onLogout={handleLogout}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
 
       {/* Sign In / Sign Up Modal */}
