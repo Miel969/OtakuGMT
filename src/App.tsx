@@ -753,7 +753,7 @@ export default function App() {
                         }`}
                       >
                         <Bell className="w-4 h-4" />
-                        {reminded ? 'Reminder Set' : 'Notify Me'}
+                        {reminded ? 'Set' : 'Notify'}
                       </button>
 
                       <a 
@@ -898,16 +898,18 @@ export default function App() {
           </>
         )}
 
-        {/* Minimal Footer */}
-        <footer className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
-          <div>
-            <span>OtakuGMT · Schedules sourced via AniList</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-slate-400 cursor-pointer">Terms & DMCA</span>
-            <span className="hover:text-slate-400 cursor-pointer">Ghana Otaku Community</span>
-          </div>
-        </footer>
+        {/* Minimal Footer (Schedule view only) */}
+        {activeTab === 'schedule' && (
+          <footer className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
+            <div>
+              <span>OtakuGMT · Schedules sourced via AniList</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="hover:text-slate-400 cursor-pointer">Terms & DMCA</span>
+              <span className="hover:text-slate-400 cursor-pointer">Ghana Otaku Community</span>
+            </div>
+          </footer>
+        )}
 
       </main>
 
