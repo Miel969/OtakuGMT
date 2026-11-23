@@ -25,27 +25,26 @@ export interface TrackItem {
 
 // 100% Active, Verified Direct Streams
 export const JAPAN_STATIONS: RadioStation[] = [
-  // 🗼 1. REAL JAPANESE TERRESTRIAL BROADCASTER (Tokyo)
+  // 🗼 1. REAL JAPANESE TERRESTRIAL COMMUNITY BROADCASTER (Tokyo)
   {
     id: 'fm-setagaya',
-    name: 'FM Setagaya 83.4',
+    name: 'FM Setagaya (83.4MHz)',
     region: 'Kanto',
     city: 'Setagaya, Tokyo',
     prefectureCode: '13',
     coordinates: { x: 73, y: 65 },
-    genre: 'Live Tokyo Community FM',
+    genre: 'Tokyo Community FM',
     category: 'tokyo-fm',
     streamUrl: 'https://fmsetagaya834.out.airtime.pro/fmsetagaya834_a',
     metadataApiUrl: 'https://fmsetagaya834.airtime.pro/api/live-info-v2',
-    description: 'Official 83.4 MHz live broadcast from Setagaya, Tokyo. Japanese DJs, neighborhood talk, and daytime Tokyo music.',
+    description: 'Official 83.4 MHz live community broadcast from Setagaya, Tokyo (JOZZ3BA-FM). Japanese DJs, local talk, and daytime music.',
     bitrate: 128,
-    isRealBroadcast: true,
   },
 
   // 🌸 2. REAL 24/7 J-POP & CITY POP NETWORKS
   {
     id: 'jpop-powerplay',
-    name: 'J-Pop Powerplay (Asia DREAM)',
+    name: 'Asia DREAM Radio - Japan',
     region: 'Kansai',
     city: 'Osaka / Tokyo',
     prefectureCode: '27',
@@ -53,13 +52,12 @@ export const JAPAN_STATIONS: RadioStation[] = [
     genre: 'Trending J-Pop & Modern Rock',
     category: 'jpop-city',
     streamUrl: 'https://kathy.torontocast.com/powerplay',
-    description: 'Nonstop high-bitrate Japanese pop charts, idol groups, Yoasobi, King Gnu, Ado, and Official HIGE DANdism.',
+    description: '24/7 Japanese pop radio network broadcasting modern J-Pop charts, idol groups, and top Japanese hits.',
     bitrate: 128,
-    isRealBroadcast: true,
   },
   {
     id: 'asia-dream-japan',
-    name: 'Asia DREAM Japan Hits',
+    name: 'Asia DREAM Radio - Japan Hits',
     region: 'Kanto',
     city: 'Shibuya, Tokyo',
     prefectureCode: '13',
@@ -67,36 +65,35 @@ export const JAPAN_STATIONS: RadioStation[] = [
     genre: 'J-Pop Hits & 80s City Pop',
     category: 'jpop-city',
     streamUrl: 'https://quincy.torontocast.com/JapanHits',
-    description: 'Broadcasting commercial modern J-Pop billboard hits, classic 80s/90s City Pop, and mainstream Japanese music.',
+    description: 'Commercial modern Japanese billboard hits, classic 80s/90s City Pop, and mainstream Japanese music.',
     bitrate: 128,
-    isRealBroadcast: true,
   },
 
-  // 🎧 3. DEDICATED ANIME OST & FANTASY INSTRUMENTAL
+  // 🎧 3. DEDICATED ANIME DOUJIN & GAME ARRANGEMENT BROADCASTS
   {
     id: 'gensokyo-radio-1',
-    name: 'Touhou & Anime Symphony',
+    name: 'Gensokyo Radio',
     region: 'Kansai',
     city: 'Kyoto',
     prefectureCode: '26',
     coordinates: { x: 55, y: 64 },
-    genre: 'Orchestral & Fantasy OST',
+    genre: 'Touhou & Doujin Music',
     category: 'anime-lofi',
     streamUrl: 'https://stream.gensokyoradio.net/1/',
-    description: 'High-fidelity Japanese instrumental music, epic fantasy themes, and community orchestral works.',
+    description: '24/7 dedicated broadcast of Touhou Project music, Japanese doujin circles, and orchestral arrangements.',
     bitrate: 128,
   },
   {
     id: 'gensokyo-radio-3',
-    name: 'Kyoto High-Fi Instrumental',
+    name: 'Gensokyo Radio (256kbps HD)',
     region: 'Kansai',
     city: 'Kyoto',
     prefectureCode: '26',
     coordinates: { x: 56, y: 65 },
-    genre: 'Enhanced 256kbps Anime OST',
+    genre: 'Anime & Game OST (HD)',
     category: 'anime-lofi',
     streamUrl: 'https://stream.gensokyoradio.net/3/',
-    description: 'Crystal-clear 256kbps audio stream dedicated to Japanese arrangements and video game soundtracks.',
+    description: 'High-definition 256kbps audio stream dedicated to Japanese arrangements and video game soundtracks.',
     bitrate: 256,
   },
 ];

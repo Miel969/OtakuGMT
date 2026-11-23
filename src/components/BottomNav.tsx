@@ -90,8 +90,8 @@ export default function BottomNav({
         </div>
       )}
 
-      {/* Main Spotify Mobile Nav Dock (Ultra-transparent, icon-only) */}
-      <nav className="relative pointer-events-auto bg-black/40 border border-white/10 backdrop-blur-3xl rounded-full px-5 py-2 shadow-2xl flex items-center gap-8">
+      {/* Main Spotify Mobile Nav Dock (Ultra-transparent, icon-only, borderless) */}
+      <nav className="relative pointer-events-auto bg-black/40 backdrop-blur-3xl rounded-full px-6 py-2 shadow-2xl flex items-center gap-8">
         
         {/* Tab: Schedule */}
         <button

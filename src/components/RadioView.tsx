@@ -139,18 +139,11 @@ export default function RadioView({
                     </div>
 
                     <div className="overflow-hidden">
-                      <div className="flex items-center gap-2">
-                        <h3 className={`text-xs font-bold truncate transition-colors ${
-                          isSelected ? 'text-purple-300' : 'text-slate-200 group-hover:text-white'
-                        }`}>
-                          {station.name}
-                        </h3>
-                        {station.isRealBroadcast && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            LIVE FM
-                          </span>
-                        )}
-                      </div>
+                      <h3 className={`text-xs font-bold truncate transition-colors ${
+                        isSelected ? 'text-purple-300' : 'text-slate-200 group-hover:text-white'
+                      }`}>
+                        {station.name}
+                      </h3>
                       <p className="text-[11px] text-slate-400 truncate mt-0.5">
                         {station.genre} · {station.city}
                       </p>
