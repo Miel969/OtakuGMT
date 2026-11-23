@@ -14,6 +14,7 @@ interface BottomNavProps {
   onTogglePlay: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  onOpenNowPlaying?: () => void;
 }
 
 export default function BottomNav({
@@ -26,6 +27,7 @@ export default function BottomNav({
   onTogglePlay,
   isMuted,
   onToggleMute,
+  onOpenNowPlaying,
 }: BottomNavProps) {
   const displayTitle = currentTrack?.title || (currentStation ? currentStation.name : '');
   const displaySubtitle = isBuffering 
@@ -40,7 +42,10 @@ export default function BottomNav({
       {/* Floating Audio Mini-Player Bar (Clean Spotify Pill above nav) */}
       {currentStation && (
         <div className="pointer-events-auto w-full max-w-md px-3 mb-2">
-          <div className="w-full px-3.5 py-2.5 rounded-xl bg-[#16161a]/95 border border-white/10 backdrop-blur-2xl shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2">
+          <div 
+            onClick={onOpenNowPlaying}
+            className="w-full px-3.5 py-2.5 rounded-xl bg-[#16161a]/95 border border-white/10 backdrop-blur-2xl shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 cursor-pointer hover:bg-[#1f1f25]/95 transition-colors group"
+          >
             
             <div className="flex items-center gap-2.5 overflow-hidden flex-1 min-w-0">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${isPlaying ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30' : 'bg-white/5 text-slate-400'}`}>
@@ -58,7 +63,7 @@ export default function BottomNav({
               </div>
               
               <div className="overflow-hidden flex-1 min-w-0">
-                <h5 className="text-xs font-bold text-slate-100 truncate">
+                <h5 className="text-xs font-bold text-slate-100 truncate group-hover:text-purple-300 transition-colors">
                   {displayTitle}
                 </h5>
                 <p className="text-[10px] text-purple-300/90 truncate font-medium">
@@ -67,7 +72,7 @@ export default function BottomNav({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={onTogglePlay}
                 className="w-8 h-8 rounded-full bg-white hover:bg-slate-200 text-black flex items-center justify-center transition-all shadow-md shadow-white/10"

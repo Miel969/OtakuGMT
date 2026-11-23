@@ -3,11 +3,12 @@ import {
   Clock, 
   Bell, 
   Calendar, 
-  ExternalLink,
-  Search,
-  X,
-  User,
-  LogOut
+  ExternalLink, 
+  Search, 
+  X, 
+  User, 
+  LogOut,
+  Info
 } from 'lucide-react';
 import { fetchWeeklyAiringAnime, type AiringScheduleItem } from './services/anilist';
 import { 
@@ -22,6 +23,8 @@ import RadioView from './components/RadioView';
 import BottomNav, { type NavTab } from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
+import AnimeDetailModal from './components/AnimeDetailModal';
+import NowPlayingModal from './components/NowPlayingModal';
 
 // Helper component for live ticking mini countdown on cards
 function CardCountdown({ airingAt }: { airingAt: number }) {
@@ -67,6 +70,9 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [reminded, setReminded] = useState(false);
+  const [remindedAnimeIds, setRemindedAnimeIds] = useState<Set<number>>(new Set());
+  const [detailAnime, setDetailAnime] = useState<AiringScheduleItem | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
   // User Profile & Auth
@@ -88,6 +94,15 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(100);
+  const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false);
+
+  const handleChangeVolume = (newVol: number) => {
+    setVolume(newVol);
+    if (audioRef.current) {
+      audioRef.current.volume = newVol / 100;
+    }
+  };
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const shouldPlayRef = useRef<boolean>(false);
@@ -745,7 +760,16 @@ export default function App() {
                     {/* Action Buttons */}
                     <div className="flex flex-wrap items-center gap-3">
                       <button 
-                        onClick={() => setReminded(!reminded)}
+                        onClick={() => {
+                          const newReminded = !reminded;
+                          setReminded(newReminded);
+                          setRemindedAnimeIds(prev => {
+                            const next = new Set(prev);
+                            if (newReminded) next.add(selectedItem.id);
+                            else next.delete(selectedItem.id);
+                            return next;
+                          });
+                        }}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg ${
                           reminded 
                             ? 'bg-emerald-500 text-black shadow-emerald-500/25' 
@@ -754,6 +778,17 @@ export default function App() {
                       >
                         <Bell className="w-4 h-4" />
                         {reminded ? 'Set' : 'Notify'}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setDetailAnime(selectedItem);
+                          setIsDetailModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-semibold text-purple-300 hover:text-white transition-all shadow-sm"
+                      >
+                        <Info className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Preview & Details</span>
                       </button>
 
                       <a 
@@ -841,7 +876,11 @@ export default function App() {
                   return (
                     <div
                       key={item.id}
-                      onClick={() => setSelectedItem(item)}
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setDetailAnime(item);
+                        setIsDetailModalOpen(true);
+                      }}
                       className={`group cursor-pointer rounded-2xl overflow-hidden border transition-all duration-300 flex flex-col bg-[#0e1017] ${
                         isSelected 
                           ? 'border-purple-500 ring-2 ring-purple-500/40 shadow-xl shadow-purple-500/10 -translate-y-1' 
@@ -924,6 +963,29 @@ export default function App() {
         onTogglePlay={handleTogglePlay}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+        onOpenNowPlaying={() => setIsNowPlayingOpen(true)}
+      />
+
+      {/* Spotify Full-Screen Now Playing Sheet */}
+      <NowPlayingModal
+        isOpen={isNowPlayingOpen}
+        onClose={() => setIsNowPlayingOpen(false)}
+        currentStation={currentStation}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        isBuffering={isBuffering}
+        onTogglePlay={handleTogglePlay}
+        isMuted={isMuted}
+        onToggleMute={handleToggleMute}
+        volume={volume}
+        onChangeVolume={handleChangeVolume}
+        onSelectStation={handleSelectStation}
+        stations={JAPAN_STATIONS}
+        isLiked={Boolean(
+          currentTrack && userProfile.likedTracks.some(t => t.title === currentTrack.title)
+        )}
+        onLikeTrack={handleLikeTrack}
+        songHistory={songHistory}
       />
 
       {/* Profile & History Drawer (Option A) */}
@@ -941,6 +1003,30 @@ export default function App() {
         onClose={() => setIsAuthOpen(false)}
         pendingTrackTitle={pendingLikedTrack?.title}
         onSuccess={handleAuthSuccess}
+      />
+
+      {/* Anime Detail Modal / Preview Sheet */}
+      <AnimeDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        anime={detailAnime || selectedItem}
+        isReminded={
+          detailAnime 
+            ? remindedAnimeIds.has(detailAnime.id) 
+            : (selectedItem ? remindedAnimeIds.has(selectedItem.id) : false)
+        }
+        onToggleReminder={(animeId) => {
+          setRemindedAnimeIds(prev => {
+            const next = new Set(prev);
+            const willHave = !next.has(animeId);
+            if (willHave) next.add(animeId);
+            else next.delete(animeId);
+            if (selectedItem && selectedItem.id === animeId) {
+              setReminded(willHave);
+            }
+            return next;
+          });
+        }}
       />
 
     </div>

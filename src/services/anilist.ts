@@ -18,7 +18,15 @@ export interface AiringScheduleItem {
     bannerImage?: string;
     genres: string[];
     averageScore?: number;
+    popularity?: number;
     format?: string;
+    description?: string;
+    studios?: {
+      nodes?: {
+        name: string;
+      }[];
+    };
+    siteUrl?: string;
   };
 }
 
@@ -40,6 +48,7 @@ query GetWeeklyAiringSchedule($airingAtGreater: Int, $airingAtLesser: Int, $perP
         title {
           romaji
           english
+          native
         }
         coverImage {
           large
@@ -49,7 +58,15 @@ query GetWeeklyAiringSchedule($airingAtGreater: Int, $airingAtLesser: Int, $perP
         bannerImage
         genres
         averageScore
+        popularity
         format
+        description(asHtml: false)
+        studios(isMain: true) {
+          nodes {
+            name
+          }
+        }
+        siteUrl
       }
     }
   }
@@ -123,6 +140,11 @@ function getFallbackWeeklyAnime(): AiringScheduleItem[] {
         },
         genres: ['Drama', 'Mystery'],
         averageScore: 88,
+        popularity: 142500,
+        format: 'TV',
+        description: 'Maomao, a young woman trained in herbal medicine, is forced to work as a lowly servant in the inner palace. When she solves the mysterious illness afflicting the emperor\'s infants, she catches the eye of an influential eunuch named Jinshi.',
+        studios: { nodes: [{ name: 'TOHO animation STUDIO' }, { name: 'OLM' }] },
+        siteUrl: 'https://anilist.co/anime/170112',
       },
     },
     {
@@ -143,6 +165,11 @@ function getFallbackWeeklyAnime(): AiringScheduleItem[] {
         },
         genres: ['Action', 'Fantasy'],
         averageScore: 86,
+        popularity: 198000,
+        format: 'TV',
+        description: 'They say whatever doesn\'t kill you makes you stronger, but that\'s not the case for the world\'s weakest hunter, Sung Jinwoo. After surviving a harrowing double dungeon, he unlocks an enigmatic System that turns him into the world\'s only player who can level up endlessly.',
+        studios: { nodes: [{ name: 'A-1 Pictures' }] },
+        siteUrl: 'https://anilist.co/anime/176496',
       },
     },
     {
@@ -163,6 +190,11 @@ function getFallbackWeeklyAnime(): AiringScheduleItem[] {
         },
         genres: ['Action', 'Comedy', 'Supernatural'],
         averageScore: 87,
+        popularity: 165000,
+        format: 'TV',
+        description: 'Momo Ayase strikes up an unusual friendship with her school\'s UFO fanatic, whom she nicknames "Okarun" because he shares a name with Ken Takakura. While Momo believes in ghosts, she brushes off aliens; Okarun believes in aliens but denies ghosts. To determine who is right, the two set off on a wager.',
+        studios: { nodes: [{ name: 'Science SARU' }] },
+        siteUrl: 'https://anilist.co/anime/171018',
       },
     },
   ];
